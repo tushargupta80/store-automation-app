@@ -1,0 +1,33 @@
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ['admin', 'cashier'],
+      default: 'cashier',
+    },
+  },
+  { timestamps: true }
+);
+
+// ✅ FIXED: async pre hook WITHOUT `next`
+userSchema.pre('save', async function () {
+  // IMPORTANT: use normal function, not arrow, so `this` refers to the document
+  if (!this.isModified('password')) return;
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Compare password method
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
+
+const User = mongoose.model('User', userSchema);
+export default User;
